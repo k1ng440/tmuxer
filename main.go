@@ -185,7 +185,8 @@ func findProjectDirectories(cfg *Config) ([]*Project, error) {
 		doublestar.GlobWalk(os.DirFS(base), pattern, func(p string, _ fs.DirEntry) error {
 			name := p
 			if patternUsed {
-				if !strings.Contains(p, "/") { // Get the name from base to avoid "." as name
+				// handle immediate directories differently to avoid "." as name
+				if !strings.Contains(p, "/") {
 					name = path.Base(base)
 				} else {
 					name = path.Dir(p)
@@ -199,7 +200,7 @@ func findProjectDirectories(cfg *Config) ([]*Project, error) {
 			}
 
 			project := &Project{
-				Name:     path.Dir(p),
+				Name:     name,
 				FullPath: fullpath,
 				HomePath: rel,
 			}
@@ -216,6 +217,7 @@ func findProjectDirectories(cfg *Config) ([]*Project, error) {
 		i++
 	}
 	sort.Slice(res, func(i, j int) bool {
+		fmt.Println(res[i].Name)
 		return strings.ToLower(res[i].Name) > strings.ToLower(res[j].Name)
 	})
 	return res, nil
@@ -263,8 +265,6 @@ func startOrAttachToTmux(project *Project) error {
 		}
 	}
 
-	resetTerminal()
-
 	switch {
 	case sessionExists && inTmux:
 		return runTmuxCommand("switch-client", "-t", project.Name)
@@ -281,20 +281,12 @@ func startOrAttachToTmux(project *Project) error {
 }
 
 func runTmuxCommand(cmdName string, args ...string) error {
-	targ := append([]string{"tmux", cmdName}, args...)
-	cmd := exec.Command("sh", "-c", strings.Join(targ, " "))
+	targ := append([]string{cmdName}, args...)
+	cmd := exec.Command("tmux", targ...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func resetTerminal() {
-	cmd := exec.Command("reset")
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	_ = cmd.Run()
 }
 
 func normalizePath(path string) (string, error) {
