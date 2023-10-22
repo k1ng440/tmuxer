@@ -30,6 +30,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -182,21 +183,27 @@ func findProjectDirectories(cfg *Config) ([]*Project, error) {
 		homedir, _ := os.UserHomeDir()
 
 		doublestar.GlobWalk(os.DirFS(base), pattern, func(p string, _ fs.DirEntry) error {
+			name := p
 			if patternUsed {
-				fullpath := path.Join(base, path.Dir(p))
-				rel, err := filepath.Rel(homedir, fullpath)
-				if err != nil {
-					return err
+				if !strings.Contains(p, "/") { // Get the name from base to avoid "." as name
+					name = path.Base(base)
+				} else {
+					name = path.Dir(p)
 				}
-
-				project := &Project{
-					Name:     path.Dir(p),
-					FullPath: fullpath,
-					HomePath: rel,
-				}
-				ret[project.FullPath] = project
 			}
-			_ = ret
+
+			fullpath := path.Join(base, name)
+			rel, err := filepath.Rel(homedir, fullpath)
+			if err != nil {
+				return err
+			}
+
+			project := &Project{
+				Name:     path.Dir(p),
+				FullPath: fullpath,
+				HomePath: rel,
+			}
+			ret[project.FullPath] = project
 			return nil
 		})
 	}
@@ -208,6 +215,9 @@ func findProjectDirectories(cfg *Config) ([]*Project, error) {
 		res[i] = v
 		i++
 	}
+	sort.Slice(res, func(i, j int) bool {
+		return strings.ToLower(res[i].Name) > strings.ToLower(res[j].Name)
+	})
 	return res, nil
 }
 
