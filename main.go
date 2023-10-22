@@ -257,15 +257,15 @@ func startOrAttachToTmux(project *Project) error {
 
 	switch {
 	case sessionExists && inTmux:
-		fmt.Printf("tmux switch-client -t %s", project.Name)
-		return nil
+		return runTmuxCommand("switch-client", "-t", project.Name)
 	case sessionExists:
-		fmt.Printf("tmux attach-session -t %s", project.Name)
-		return nil
+		return runTmuxCommand("attach-session", "-t", project.Name)
 	default:
 		if err := runTmuxCommand("new-session", "-d", "-s", project.Name, "-c", project.FullPath); err != nil {
 			return err
 		}
+
+		// recall self to attach or switch
 		return startOrAttachToTmux(project)
 	}
 }
